@@ -29,7 +29,7 @@
             background-color: #000;
         }
 
-        /* Right/Top Viewport: Holds both the camera stream and the transparent 3D layer */
+        /* Viewport: Holds both the camera stream and the transparent 3D layer */
         .viewer-container {
             flex: 1;
             position: relative;
@@ -136,30 +136,6 @@
             font-weight: 500;
         }
 
-        /* Custom Immersive WebXR Native Trigger */
-        #ar-button {
-            background-color: var(--primary);
-            border-radius: 30px;
-            padding: 14px 28px;
-            color: white;
-            border: none;
-            font-weight: 600;
-            font-size: 15px;
-            position: absolute;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            cursor: pointer;
-            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
-            z-index: 5;
-            transition: transform 0.2s, background-color 0.2s;
-        }
-
-        #ar-button:hover {
-            background-color: #1d4ed8;
-            transform: translateX(-50%) scale(1.03);
-        }
-
         /* Hardware Error Handler Banner */
         #camera-alert {
             position: absolute;
@@ -239,21 +215,17 @@
             id="ar-engine" 
             src="https://modelviewer.dev/shared-assets/models/Chair.glb" 
             ar 
-            ar-modes="scene-viewer webxr quick-look" 
+            ar-modes="webxr scene-viewer quick-look" 
             camera-controls 
             interaction-prompt="none"
-            shadow-intensity="0"
+            shadow-intensity="1"
             alt="Interactive 3D Furniture Overlay">
-            
-            <button slot="ar-button" id="ar-button">
-                👋 Place in Your Room (True AR)
-            </button>
         </model-viewer>
     </div>
 
     <script>
         // --- 1. Global State Configuration ---
-        let localStream = null; // Holds reference to the webcam feed globally to execute graceful shutdowns
+        let localStream = null; 
 
         // --- 2. Hardware Driver Hook: Active Camera Pass-Through Preview ---
         async function initCamera() {
@@ -261,7 +233,6 @@
             const alertBanner = document.getElementById('camera-alert');
             const statusLabel = document.getElementById('camera-status');
             
-            // "environment" commands mobile OS architectures to select the rear camera matrix
             const constraints = {
                 video: { facingMode: "environment" },
                 audio: false
@@ -273,8 +244,6 @@
                 statusLabel.innerText = "Live Pass-Through Active";
             } catch (error) {
                 console.warn("Primary environment camera rejected, fallback to system standard webcam:", error);
-                
-                // Secondary check for desktops/laptops debugging the codebase
                 try {
                     localStream = await navigator.mediaDevices.getUserMedia({ video: true });
                     video.srcObject = localStream;
@@ -287,22 +256,23 @@
             }
         }
 
-        // Fire initialization sequence the moment the layout clears the DOM pipeline
         window.addEventListener('DOMContentLoaded', initCamera);
 
-
-        // --- 3. Dynamic Handover Event Handler ---
-        const arButton = document.getElementById('ar-button');
+        // --- 3. Secure WebXR Handover Handler ---
+        const modelViewer = document.getElementById('ar-engine');
         
-        arButton.addEventListener('click', () => {
-            // Instantly unhooks webpage stream right as the user hits the launch button
-            // This guarantees the native Android ARCore/SceneViewer doesn't hit a camera-busy conflict
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-                console.log("Web camera stream safely suspended to yield controls to native device tracking sensors.");
+        // Listen to model-viewer's built-in session triggers instead of a custom button click
+        modelViewer.addEventListener('ar-status', (event) => {
+            if (event.detail.status === 'session-started') {
+                // Shut down our custom background video track only when WebXR has successfully claimed the lens
+                if (localStream) {
+                    localStream.getTracks().forEach(track => track.stop());
+                }
+            } else if (event.detail.status === 'not-presenting') {
+                // If they exit AR mode, reboot our custom background video stream layout seamlessly
+                initCamera();
             }
         });
-
 
         // --- 4. Live Catalog Dataset Records ---
         const furnitureDatabase = {
@@ -333,21 +303,17 @@
         };
 
         const selector = document.getElementById('furniture-selector');
-        const modelViewer = document.getElementById('ar-engine');
 
-        // Dynamically processes product changes across the 3D core canvas and sidebar specifications labels
         selector.addEventListener('change', (e) => {
             const currentProduct = furnitureDatabase[e.target.value];
             
             if (currentProduct) {
-                // Instantly rewrite the UI layout text specifications
                 document.getElementById('item-name').innerText = currentProduct.name;
                 document.getElementById('item-brand').innerText = currentProduct.brand;
                 document.getElementById('item-size').innerText = currentProduct.size;
                 document.getElementById('item-color').innerText = currentProduct.color;
                 document.getElementById('item-texture').innerText = currentProduct.texture;
 
-                // Hot-swap the underlying GLTF binary 3D model path 
                 modelViewer.src = currentProduct.modelUrl;
             }
         });
