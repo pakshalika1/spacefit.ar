@@ -1,322 +1,550 @@
-<!DOCTYPE html>
-<html lang="en">
+
+     <!DOCTYPE html>
+<html lang="en" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SpaceFit AR - Mercer Mettl Hackathon Prototype</title>
-    
-    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
-
-    <style>
-        :root {
-            --primary: #2563eb;
-            --dark: #1e293b;
-            --light: #f8fafc;
-            --accent: #10b981;
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FurniView AR | Cross-device furniture preview</title>
+  <meta name="description" content="Cross-device furniture preview website with 3D view, AR launch, and product details for a hackathon demo." />
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap" rel="stylesheet">
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <style>
+    :root, [data-theme="light"] {
+      --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+      --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+      --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+      --text-lg: clamp(1.125rem, 1rem + 0.75vw, 1.5rem);
+      --text-xl: clamp(1.5rem, 1.2rem + 1.25vw, 2rem);
+      --space-1: .25rem; --space-2: .5rem; --space-3: .75rem; --space-4: 1rem; --space-5: 1.25rem;
+      --space-6: 1.5rem; --space-8: 2rem; --space-10: 2.5rem; --space-12: 3rem; --space-16: 4rem;
+      --color-bg: #f5f3ee; --color-surface: #fcfbf8; --color-surface-2: #efebe3; --color-border: #d8d4cc;
+      --color-text: #211f1b; --color-text-muted: #6f6a61; --color-text-faint: #9c988f; --color-text-inverse: #faf8f5;
+      --color-primary: #0d6770; --color-primary-hover: #084e55; --color-primary-soft: #d9eaec; --color-success: #447d4d; --color-warning: #b1722d;
+      --shadow-lg: 0 24px 60px rgba(17, 24, 28, .14); --shadow-md: 0 10px 28px rgba(17, 24, 28, .1);
+      --radius-sm: .5rem; --radius-md: .875rem; --radius-lg: 1.125rem; --radius-xl: 1.5rem; --radius-full: 9999px;
+      --font-body: 'Satoshi', Inter, system-ui, sans-serif;
+      --transition: 180ms cubic-bezier(.16,1,.3,1);
+    }
+    [data-theme="dark"] {
+      --color-bg: #121210; --color-surface: #1b1a18; --color-surface-2: #24231f; --color-border: #35342f;
+      --color-text: #f0ede8; --color-text-muted: #b5afa5; --color-text-faint: #7f7a71; --color-text-inverse: #121210;
+      --color-primary: #66bdc6; --color-primary-hover: #8ed3d9; --color-primary-soft: #203237; --color-success: #7fc58d; --color-warning: #f0bc76;
+      --shadow-lg: 0 24px 60px rgba(0,0,0,.36); --shadow-md: 0 10px 28px rgba(0,0,0,.28);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      min-height: 100dvh;
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      line-height: 1.55;
+      background:
+        radial-gradient(circle at top left, color-mix(in oklab, var(--color-primary) 14%, transparent), transparent 28%),
+        radial-gradient(circle at bottom right, color-mix(in oklab, var(--color-primary) 8%, transparent), transparent 24%),
+        var(--color-bg);
+      color: var(--color-text);
+    }
+    img, svg, model-viewer { display: block; max-width: 100%; }
+    button, select { font: inherit; }
+    button { cursor: pointer; border: 0; }
+    a { color: inherit; text-decoration: none; }
+    :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+    .app {
+      display: grid;
+      grid-template-columns: 330px minmax(0, 1fr);
+      min-height: 100dvh;
+    }
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100dvh;
+      overflow-y: auto;
+      padding: var(--space-6);
+      background: color-mix(in oklab, var(--color-surface) 92%, black 8%);
+      border-right: 1px solid color-mix(in oklab, var(--color-text) 11%, transparent);
+      display: grid;
+      align-content: start;
+      gap: var(--space-6);
+    }
+    .brand-row, .toolbar { display: flex; align-items: center; gap: var(--space-3); }
+    .toolbar { justify-content: space-between; }
+    .logo {
+      width: 2.8rem; height: 2.8rem; border-radius: 1rem; background: linear-gradient(135deg, var(--color-primary), color-mix(in oklab, var(--color-primary) 55%, white 45%));
+      display: grid; place-items: center; color: var(--color-text-inverse); box-shadow: var(--shadow-md); flex: 0 0 auto;
+    }
+    .brand-copy h1 { font-size: var(--text-lg); line-height: 1.05; letter-spacing: -.02em; }
+    .brand-copy p, .helper, .meta-label, .meta-note { color: var(--color-text-muted); font-size: var(--text-sm); }
+    .theme-toggle {
+      width: 44px; height: 44px; border-radius: var(--radius-full); background: var(--color-surface-2); color: var(--color-text);
+      border: 1px solid color-mix(in oklab, var(--color-text) 10%, transparent); display: grid; place-items: center;
+    }
+    .section-title {
+      font-size: var(--text-xs); color: var(--color-text-faint); text-transform: uppercase; letter-spacing: .14em; font-weight: 700; margin-bottom: var(--space-3);
+    }
+    .card {
+      background: var(--color-surface-2); border: 1px solid color-mix(in oklab, var(--color-text) 10%, transparent); border-radius: var(--radius-xl); padding: var(--space-4);
+      box-shadow: var(--shadow-md); display: grid; gap: var(--space-3);
+    }
+    .furniture-list { display: grid; gap: var(--space-3); }
+    .furniture-btn {
+      width: 100%; text-align: left; padding: var(--space-4); border-radius: var(--radius-lg); background: color-mix(in oklab, var(--color-surface) 55%, var(--color-surface-2));
+      border: 1px solid color-mix(in oklab, var(--color-text) 8%, transparent); color: var(--color-text); min-height: 82px; transition: transform var(--transition), background var(--transition), border-color var(--transition);
+      display: grid; gap: .35rem;
         }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        body {
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-            background-color: #000;
-        }
-
-        /* Viewport: Holds both the camera stream and the transparent 3D layer */
-        .viewer-container {
-            flex: 1;
-            position: relative;
-            height: 100%;
-            background-color: #111;
-        }
-
-        /* Background Video Feed Layer */
-        #camera-preview {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            z-index: 1;
-        }
-
-        /* Transparent 3D Engine Layer overlapping the camera view */
-        model-viewer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 2;
-            --poster-color: transparent;
-            background-color: transparent; 
-        }
-
-        /* Left/Bottom UI Control Sidebar */
-        .sidebar {
-            width: 380px;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(12px);
-            box-shadow: -5px 0 25px rgba(0,0,0,0.2);
-            padding: 30px;
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-            z-index: 10;
-            overflow-y: auto;
-            border-right: 1px solid #e2e8f0;
-        }
-
-        .logo-area h2 {
-            color: var(--dark);
-            font-size: 24px;
-            font-weight: 700;
-        }
-        .logo-area span {
-            color: var(--primary);
-        }
-
-        /* Dropdown Interactive Elements */
-        .catalog-select {
-            padding: 12px;
-            border-radius: 8px;
-            border: 2px solid #e2e8f0;
-            font-size: 16px;
-            color: var(--dark);
-            outline: none;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background-color: #fff;
-        }
-        .catalog-select:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
-        }
-
-        /* Technical Product Metadata Specifications Card */
-        .details-card {
-            background: var(--light);
-            padding: 20px;
-            border-radius: 12px;
-            border: 1px solid #e2e8f0;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
-        }
-
-        .details-card h3 {
-            color: var(--dark);
-            margin-bottom: 15px;
-            border-bottom: 2px solid #e2e8f0;
-            padding-bottom: 8px;
-            font-size: 18px;
-        }
-
-        .info-grid {
-            display: grid;
-            grid-template-columns: auto 1fr;
-            gap: 14px;
-            font-size: 14px;
-        }
-
-        .label {
-            font-weight: 600;
-            color: #64748b;
-        }
-
-        .value {
-            color: var(--dark);
-            text-align: right;
-            font-weight: 500;
-        }
-
-        /* Hardware Error Handler Banner */
-        #camera-alert {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(239, 68, 68, 0.95);
-            color: white;
-            padding: 10px 18px;
-            border-radius: 8px;
-            font-size: 13px;
-            z-index: 4;
-            display: none;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
-
-        /* Responsive Breakpoints: Shifts sidebar to a bottom drawer interface on mobile */
-        @media (max-width: 768px) {
-            body {
-                flex-direction: column-reverse;
-            }
-            .sidebar {
-                width: 100%;
-                height: 45%;
-                padding: 20px;
-            }
-            .viewer-container {
-                height: 55%;
-            }
-        }
-    </style>
+    .furniture-btn:hover, .furniture-btn.active {
+      transform: translateY(-1px); background: color-mix(in oklab, var(--color-primary) 10%, var(--color-surface-2)); border-color: color-mix(in oklab, var(--color-primary) 40%, transparent);
+    }
+    .furniture-name { font-weight: 700; }
+    .furniture-sub { font-size: var(--text-sm); color: var(--color-text-muted); }
+    .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+    .meta-box { background: color-mix(in oklab, var(--color-surface) 35%, var(--color-surface-2)); border-radius: var(--radius-md); padding: var(--space-3); border: 1px solid color-mix(in oklab, var(--color-text) 8%, transparent); }
+    .meta-value { font-weight: 700; margin-top: .25rem; }
+    .pill-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+    .pill { padding: .45rem .7rem; border-radius: var(--radius-full); background: color-mix(in oklab, var(--color-primary) 14%, var(--color-surface)); border: 1px solid color-mix(in oklab, var(--color-primary) 35%, transparent); font-size: var(--text-sm); }
+    .swatches { display: flex; gap: .55rem; flex-wrap: wrap; }
+    .swatch {
+      width: 1.65rem; height: 1.65rem; border-radius: 50%; border: 2px solid color-mix(in oklab, var(--color-text) 16%, transparent); cursor: pointer;
+      transition: transform var(--transition), border-color var(--transition);
+    }
+    .swatch.active { transform: scale(1.08); border-color: var(--color-primary); }
+    .main {
+      min-width: 0; padding: var(--space-6); display: grid; gap: var(--space-6); align-content: start;
+    }
+    .hero {
+      display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(300px, .75fr); gap: var(--space-6);
+    }
+    .viewer-shell {
+      position: relative; min-height: 72dvh; border-radius: 2rem; overflow: hidden; background:
+      radial-gradient(circle at top, color-mix(in oklab, var(--color-primary) 18%, transparent), transparent 36%),
+      linear-gradient(180deg, color-mix(in oklab, var(--color-surface) 70%, #000 30%), color-mix(in oklab, var(--color-bg) 72%, #000 28%));
+      border: 1px solid color-mix(in oklab, var(--color-text) 10%, transparent); box-shadow: var(--shadow-lg);
+    }
+    model-viewer {
+      width: 100%; height: 100%; min-height: 72dvh; --poster-color: transparent; background: transparent;
+    }
+    .viewer-overlay {
+      position: absolute; inset: var(--space-4) var(--space-4) auto var(--space-4); display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-3); pointer-events: none;
+    }
+    .glass {
+      pointer-events: auto; backdrop-filter: blur(16px); background: color-mix(in oklab, var(--color-surface) 65%, transparent);
+      border: 1px solid color-mix(in oklab, var(--color-text) 10%, transparent); border-radius: var(--radius-full); padding: .7rem 1rem; box-shadow: var(--shadow-md);
+    }
+    .status { display: flex; gap: .7rem; align-items: center; font-size: var(--text-sm); }
+    .dot { width: .7rem; height: .7rem; border-radius: 50%; background: var(--color-warning); box-shadow: 0 0 0 6px color-mix(in oklab, var(--color-warning) 16%, transparent); }
+    .dot.live { background: var(--color-success); box-shadow: 0 0 0 6px color-mix(in oklab, var(--color-success) 16%, transparent); }
+    .hero-copy {
+      display: grid; gap: var(--space-4); align-content: start;
+    }
+    .eyebrow { font-size: var(--text-sm); color: var(--color-primary); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .hero-copy h2 { font-size: clamp(2rem, 1.3rem + 2vw, 3.6rem); line-height: .98; letter-spacing: -.04em; max-width: 12ch; }
+    .hero-copy p { color: var(--color-text-muted); max-width: 52ch; }
+    .cta-row, .control-row { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+    .primary-btn, .secondary-btn, .ghost-btn {
+      min-height: 48px; padding: .9rem 1.1rem; border-radius: var(--radius-full); font-weight: 700; transition: transform var(--transition), background var(--transition), border-color var(--transition);
+      display: inline-flex; align-items: center; justify-content: center; gap: .55rem;
+    }
+    .primary-btn { background: var(--color-primary); color: var(--color-text-inverse); }
+    .primary-btn:hover { background: var(--color-primary-hover); transform: translateY(-1px); }
+    .secondary-btn, .ghost-btn { background: transparent; color: var(--color-text); border: 1px solid color-mix(in oklab, var(--color-text) 12%, transparent); }
+    .ghost-btn { background: color-mix(in oklab, var(--color-surface) 55%, transparent); }
+    .spec-list { display: grid; gap: var(--space-3); }
+    .spec-item { display: flex; justify-content: space-between; gap: var(--space-4); padding: .9rem 0; border-top: 1px solid color-mix(in oklab, var(--color-text) 10%, transparent); }
+    .spec-item:first-child { border-top: 0; padding-top: 0; }
+    .compat-note { font-size: var(--text-sm); color: var(--color-text-muted); }
+    .banner {
+      display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap; padding: var(--space-4); border-radius: var(--radius-xl);
+      background: color-mix(in oklab, var(--color-primary) 10%, var(--color-surface)); border: 1px solid color-mix(in oklab, var(--color-primary) 28%, transparent);
+    }
+    .inline-code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9em; background: color-mix(in oklab, var(--color-surface) 35%, black 10%); padding: .12rem .4rem; border-radius: .4rem;
+    }
+    @media (max-width: 1080px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { position: static; height: auto; border-right: 0; border-bottom: 1px solid color-mix(in oklab, var(--color-text) 11%, transparent); }
+      .hero { grid-template-columns: 1fr; }
+      .viewer-shell, model-viewer { min-height: 58dvh; }
+    }
+    @media (max-width: 680px) {
+      .main, .sidebar { padding: var(--space-4); }
+      .meta-grid { grid-template-columns: 1fr; }
+      .viewer-overlay { inset: var(--space-3) var(--space-3) auto var(--space-3); flex-direction: column; align-items: flex-start; }
+      .hero-copy h2 { max-width: 14ch; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+    }
+  </style>
 </head>
 <body>
+  <div class="app">
+    <aside class="sidebar" aria-label="Furniture browser and details">
+      <div class="toolbar">
+        <div class="brand-row">
+          <div class="logo" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M4 16.6V8.9C4 7.85 4.85 7 5.9 7H18.1C19.15 7 20 7.85 20 8.9V16.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              <path d="M7 11.1H17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              <path d="M6.2 16.6V18.6M17.8 16.6V18.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="brand-copy">
+            <h1>FurniView AR</h1>
+            <p>Cross-device furniture preview</p>
+          </div>
+        </div>
+        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch theme"></button>
+      </div>
 
-    <div class="sidebar">
-        <div class="logo-area">
-            <h2>SpaceFit <span>AR</span></h2>
-            <p style="color: #64748b; font-size: 12px; margin-top: 4px;">Mercer Mettl AR Hackathon Prototype</p>
+      <section>
+        <p class="section-title">Furniture menu</p>
+        <div id="furnitureList" class="furniture-list"></div>
+      </section>
+
+      <section class="card" aria-live="polite">
+        <div>
+          <p class="section-title">Selected furniture</p>
+          <h2 id="detailName" style="font-size:var(--text-lg); line-height:1.1;">Nordic Accent Chair</h2>
+          <p id="detailDescription" class="helper" style="margin-top:.45rem;">Soft lounge seating with a compact footprint for bedrooms and reading corners.</p>
         </div>
 
-        <div style="display: flex; flex-direction: column; gap: 8px;">
-            <label style="font-weight: 600; color: var(--dark); font-size: 14px;">Choose Furniture Asset:</label>
-            <select id="furniture-selector" class="catalog-select">
-                <option value="chair">Modern Accent Chair</option>
-                <option value="table">Minimalist Coffee Table</option>
-                <option value="sofa">Nordic Luxe Sofa</option>
-            </select>
+        <div class="meta-grid">
+          <div class="meta-box"><div class="meta-label">Dimensions</div><div class="meta-value" id="detailDimensions">82 x 78 x 86 cm</div></div>
+          <div class="meta-box"><div class="meta-label">Color</div><div class="meta-value" id="detailColor">Mustard ochre</div></div>
+          <div class="meta-box"><div class="meta-label">Material</div><div class="meta-value" id="detailMaterial">Velvet upholstery, steel frame</div></div>
+          <div class="meta-box"><div class="meta-label">Room fit</div><div class="meta-value" id="detailFit">Reading nook</div></div>
         </div>
 
-        <div class="details-card">
-            <h3 id="item-name">Modern Accent Chair</h3>
-            <div class="info-grid">
-                <span class="label">Company:</span>
-                <span class="value" id="item-brand">LuxeComfort Inc.</span>
-
-                <span class="label">Size (WxLxH):</span>
-                <span class="value" id="item-size">85cm x 80cm x 90cm</span>
-
-                <span class="label">Color Tone:</span>
-                <span class="value" id="item-color">Teal Blue</span>
-
-                <span class="label">Texture:</span>
-                <span class="value" id="item-texture">Premium Velvet Fabric</span>
-                
-                <span class="label">Camera Status:</span>
-                <span class="value" id="camera-status" style="color: var(--accent); font-weight: bold;">Starting Feed...</span>
-            </div>
+        <div>
+          <p class="section-title">Highlights</p>
+          <div class="pill-row" id="detailPills"></div>
         </div>
-    </div>
 
-    <div class="viewer-container">
-        
-        <video id="camera-preview" autoplay playsinline muted></video>
-        
-        <div id="camera-alert">⚠️ Camera access blocked. Please grant camera permissions to utilize the live passthrough mode.</div>
+        <div>
+          <p class="section-title">Color options</p>
+          <div class="swatches" id="swatches"></div>
+        </div>
+      </section>
 
-        <model-viewer 
-            id="ar-engine" 
-            src="https://modelviewer.dev/shared-assets/models/Chair.glb" 
-            ar 
-            ar-modes="webxr scene-viewer quick-look" 
-            camera-controls 
-            interaction-prompt="none"
+      <section class="card">
+        <p class="section-title">Device support</p>
+        <div class="spec-list">
+          <div class="spec-item"><span>Android AR</span><span class="meta-note">WebXR / Scene Viewer</span></div>
+          <div class="spec-item"><span>iPhone / iPad AR</span><span class="meta-note">Quick Look</span></div>
+          <div class="spec-item"><span>Desktop</span><span class="meta-note">Interactive 3D view</span></div>
+        </div>
+        <p class="compat-note">AR launch depends on device and browser capabilities. The 3D viewer works broadly, while AR uses the supported native mode on each platform.</p>
+      </section>
+    </aside>
+
+    <main class="main">
+      <section class="hero">
+        <div class="viewer-shell">
+          <model-viewer
+            id="viewer"
+            alt="3D furniture preview"
+            src="https://modelviewer.dev/shared-assets/models/ShopifyModels/Chair.glb"
+            ios-src="https://modelviewer.dev/shared-assets/models/Astronaut.usdz"
+            ar
+            ar-modes="webxr scene-viewer quick-look"
+            camera-controls
+            touch-action="pan-y"
             shadow-intensity="1"
-            alt="Interactive 3D Furniture Overlay">
-        </model-viewer>
-    </div>
+            exposure="1"
+            environment-image="neutral"
+            auto-rotate
+            interaction-prompt="auto"
+            scale="1 1 1"
+            camera-orbit="45deg 70deg auto"
+            min-camera-orbit="auto 45deg auto"
+            max-camera-orbit="auto 95deg auto"
+          >
+            <button class="primary-btn" slot="ar-button" id="arButton">View in your space</button>
+          </model-viewer>
 
-    <script>
-        // --- 1. Global State Configuration ---
-        let localStream = null; 
+          <div class="viewer-overlay">
+            <div class="glass status"><span id="statusDot" class="dot live"></span><span id="statusText">3D model ready</span></div>
+            <div class="glass" style="font-size:var(--text-sm); color:var(--color-text-muted);">Drag to rotate, pinch to zoom, tap <span class="inline-code">View in your space</span> for AR</div>
+          </div>
+        </div>
 
-        // --- 2. Hardware Driver Hook: Active Camera Pass-Through Preview ---
-        async function initCamera() {
-            const video = document.getElementById('camera-preview');
-            const alertBanner = document.getElementById('camera-alert');
-            const statusLabel = document.getElementById('camera-status');
-            
-            const constraints = {
-                video: { facingMode: "environment" },
-                audio: false
-            };
+        <div class="hero-copy">
+          <div class="eyebrow">WebAR furniture website</div>
+          <h2>Let people check whether furniture fits before they buy.</h2>
+          <p>This version is designed to work across phones, tablets, and desktops by combining a universal 3D product viewer with platform-specific AR launch modes. On unsupported devices, users still get a full interactive product experience instead of a broken page.</p>
 
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia(constraints);
-                video.srcObject = localStream;
-                statusLabel.innerText = "Live Pass-Through Active";
-            } catch (error) {
-                console.warn("Primary environment camera rejected, fallback to system standard webcam:", error);
-                try {
-                    localStream = await navigator.mediaDevices.getUserMedia({ video: true });
-                    video.srcObject = localStream;
-                    statusLabel.innerText = "Webcam Feed Active";
-                } catch(e) {
-                    alertBanner.style.display = "block";
-                    statusLabel.innerText = "Camera Restricted";
-                    statusLabel.style.color = "#ef4444";
-                }
-            }
+          <div class="cta-row">
+            <button id="launchArBtn" class="primary-btn" type="button">Launch AR</button>
+            <button id="spinBtn" class="ghost-btn" type="button">Toggle auto-rotate</button>
+            <button id="resetBtn" class="secondary-btn" type="button">Reset view</button>
+          </div>
+
+          <div class="banner">
+            <strong>How it behaves:</strong>
+            <span class="compat-note">Android uses WebXR or Scene Viewer when available, iPhone and iPad use Quick Look, and desktops keep the model in-browser for interactive inspection.</span>
+          </div>
+
+          <section class="card">
+            <p class="section-title">Selected model specs</p>
+            <div class="spec-list">
+              <div class="spec-item"><span>Recommended room</span><strong id="specRoom">Reading nook</strong></div>
+              <div class="spec-item"><span>Footprint</span><strong id="specFootprint">0.82 m wide</strong></div>
+              <div class="spec-item"><span>Finish</span><strong id="specFinish">Velvet upholstery</strong></div>
+              <div class="spec-item"><span>AR readiness</span><strong id="specAr">Cross-device fallback enabled</strong></div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const FALLBACK_USDZ = 'https://modelviewer.dev/shared-assets/models/Astronaut.usdz';
+
+    const furnitureItems = [
+      {
+        id: 'chair',
+        name: 'Nordic Accent Chair',
+        short: 'Compact lounge chair',
+        description: 'Soft lounge seating with a compact footprint for bedrooms and reading corners.',
+        dimensions: '82 x 78 x 86 cm',
+        color: 'Mustard ochre',
+        material: 'Velvet upholstery, steel frame',
+        fit: 'Reading nook',
+        footprint: '0.82 m wide',
+        finish: 'Velvet upholstery',
+        arNote: 'Best on Android Chrome and iOS Safari',
+        model: 'https://modelviewer.dev/shared-assets/models/ShopifyModels/Chair.glb',
+        ios: FALLBACK_USDZ,
+        orbit: '35deg 72deg auto',
+        tags: ['Compact', 'Statement piece', 'Bedroom'],
+        swatches: ['#c5963d', '#546b80', '#8b6d58']
+      },
+      {
+        id: 'sofa',
+        name: 'Minimal Sofa',
+        short: 'Wide living-room sofa',
+        description: 'Low-profile sofa shape with a broad frame for living rooms and studio apartments.',
+        dimensions: '210 x 90 x 82 cm',
+        color: 'Pebble grey',
+        material: 'Fabric upholstery, oak base',
+        fit: 'Living room',
+        footprint: '2.1 m wide',
+        finish: 'Textured weave fabric',
+        arNote: '3D preview on all devices, AR where supported',
+        model: 'https://modelviewer.dev/shared-assets/models/sofa.glb',
+        ios: FALLBACK_USDZ,
+        orbit: '48deg 68deg auto',
+        tags: ['Living room', 'Minimal', '3-seater'],
+        swatches: ['#b7b1ab', '#7f8a94', '#8b7b6b']
+      },
+      {
+        id: 'table',
+        name: 'Dining Table',
+        short: 'Rectangular wood table',
+        description: 'Modern dining table with a clean top and sturdy base for family meals and meetings.',
+        dimensions: '180 x 90 x 75 cm',
+        color: 'Walnut brown',
+        material: 'Solid wood, matte finish',
+        fit: 'Dining space',
+        footprint: '1.8 m long',
+        finish: 'Walnut matte finish',
+        arNote: 'Works well for space planning in larger rooms',
+        model: 'https://modelviewer.dev/shared-assets/models/NeilArmstrong.glb',
+        ios: FALLBACK_USDZ,
+        orbit: '25deg 70deg auto',
+        tags: ['Dining', 'Wood', '6-seater'],
+        swatches: ['#8f6542', '#5d4938', '#c09a77']
+      },
+      {
+        id: 'cabinet',
+        name: 'Storage Cabinet',
+        short: 'Tall vertical cabinet',
+        description: 'Vertical storage unit for entryways, kitchens, clinics, and compact apartments.',
+        dimensions: '90 x 42 x 185 cm',
+        color: 'Forest green',
+        material: 'Powder-coated wood composite',
+        fit: 'Entryway',
+        footprint: '0.9 m wide',
+        finish: 'Powder-coated finish',
+        arNote: 'Useful for checking height clearance against walls',
+        model: 'https://modelviewer.dev/shared-assets/models/RobotExpressive.glb',
+        ios: FALLBACK_USDZ,
+        orbit: '0deg 75deg auto',
+        tags: ['Storage', 'Vertical', 'Entryway'],
+        swatches: ['#5b7b67', '#d2ccc2', '#6f5c4f']
+      }
+    ];
+
+    const state = {
+      selected: furnitureItems[0],
+      selectedColor: furnitureItems[0].swatches[0],
+      autoRotate: true
+    };
+
+    const els = {
+      viewer: document.getElementById('viewer'),
+      furnitureList: document.getElementById('furnitureList'),
+      detailName: document.getElementById('detailName'),
+      detailDescription: document.getElementById('detailDescription'),
+      detailDimensions: document.getElementById('detailDimensions'),
+      detailColor: document.getElementById('detailColor'),
+      detailMaterial: document.getElementById('detailMaterial'),
+      detailFit: document.getElementById('detailFit'),
+      detailPills: document.getElementById('detailPills'),
+      swatches: document.getElementById('swatches'),
+      specRoom: document.getElementById('specRoom'),
+      specFootprint: document.getElementById('specFootprint'),
+      specFinish: document.getElementById('specFinish'),
+      specAr: document.getElementById('specAr'),
+      launchArBtn: document.getElementById('launchArBtn'),
+      spinBtn: document.getElementById('spinBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      themeToggle: document.querySelector('[data-theme-toggle]'),
+      statusText: document.getElementById('statusText'),
+      statusDot: document.getElementById('statusDot')
+    };
+
+    function setThemeIcon() {
+      const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+      els.themeToggle.innerHTML = dark
+        ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
+        : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>';
+      els.themeToggle.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+    }
+
+    function initTheme() {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+      setThemeIcon();
+      els.themeToggle.addEventListener('click', () => {
+        document.documentElement.setAttribute('data-theme', document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+        setThemeIcon();
+      });
+    }
+
+    function renderFurnitureList() {
+      els.furnitureList.innerHTML = furnitureItems.map(item => `
+        <button class="furniture-btn ${item.id === state.selected.id ? 'active' : ''}" data-id="${item.id}" type="button">
+          <span class="furniture-name">${item.name}</span>
+          <span class="furniture-sub">${item.short}</span>
+        </button>
+      `).join('');
+
+      els.furnitureList.querySelectorAll('[data-id]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const next = furnitureItems.find(item => item.id === btn.dataset.id);
+          if (!next) return;
+          state.selected = next;
+          state.selectedColor = next.swatches[0];
+          applySelection();
+        });
+      });
+    }
+
+    function renderSwatches() {
+      els.swatches.innerHTML = state.selected.swatches.map(color => `
+        <button class="swatch ${color === state.selectedColor ? 'active' : ''}" type="button" data-color="${color}" aria-label="Select color ${color}" style="background:${color};"></button>
+      `).join('');
+
+      els.swatches.querySelectorAll('[data-color]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.selectedColor = btn.dataset.color;
+          els.detailColor.textContent = btn.dataset.color.toUpperCase();
+          renderSwatches();
+          tintViewerBackdrop();
+        });
+      });
+    }
+
+    function tintViewerBackdrop() {
+      const shell = document.querySelector('.viewer-shell');
+      shell.style.background = `
+        radial-gradient(circle at top, color-mix(in oklab, ${state.selectedColor} 28%, transparent), transparent 36%),
+        linear-gradient(180deg, color-mix(in oklab, var(--color-surface) 70%, #000 30%), color-mix(in oklab, var(--color-bg) 72%, #000 28%))
+      `;
+    }
+
+    function applySelection() {
+      const item = state.selected;
+      els.detailName.textContent = item.name;
+      els.detailDescription.textContent = item.description;
+      els.detailDimensions.textContent = item.dimensions;
+      els.detailColor.textContent = item.color;
+      els.detailMaterial.textContent = item.material;
+      els.detailFit.textContent = item.fit;
+      els.detailPills.innerHTML = item.tags.map(tag => `<span class="pill">${tag}</span>`).join('');
+      els.specRoom.textContent = item.fit;
+      els.specFootprint.textContent = item.footprint;
+      els.specFinish.textContent = item.finish;
+      els.specAr.textContent = item.arNote;
+
+      els.viewer.src = item.model;
+      els.viewer.setAttribute('ios-src', item.ios);
+      els.viewer.setAttribute('camera-orbit', item.orbit);
+      els.viewer.setAttribute('alt', `${item.name} 3D preview`);
+      renderFurnitureList();
+      renderSwatches();
+      tintViewerBackdrop();
+      els.statusText.textContent = `${item.name} loaded`;
+    }
+
+    function attachViewerEvents() {
+      els.viewer.addEventListener('load', () => {
+        els.statusText.textContent = `${state.selected.name} ready in 3D`;
+        els.statusDot.classList.add('live');
+      });
+
+      els.viewer.addEventListener('error', () => {
+        els.statusText.textContent = 'Model failed to load, try another selection';
+        els.statusDot.classList.remove('live');
+      });
+
+      els.viewer.addEventListener('ar-status', event => {
+        const status = event.detail.status;
+        if (status === 'session-started') {
+          els.statusText.textContent = 'AR session started';
+          els.statusDot.classList.add('live');
+        } else if (status === 'failed') {
+          els.statusText.textContent = 'AR launch unavailable on this device';
+          els.statusDot.classList.remove('live');
+        } else if (status === 'not-presenting') {
+          els.statusText.textContent = `${state.selected.name} ready in 3D`;
         }
+      });
+    }
 
-        window.addEventListener('DOMContentLoaded', initCamera);
+    function attachControls() {
+      els.launchArBtn.addEventListener('click', () => {
+        if (typeof els.viewer.activateAR === 'function') {
+          els.viewer.activateAR();
+        } else {
+          els.statusText.textContent = 'AR action not supported in this browser';
+          els.statusDot.classList.remove('live');
+        }
+      });
 
-        // --- 3. Secure WebXR Handover Handler ---
-        const modelViewer = document.getElementById('ar-engine');
-        
-        // Listen to model-viewer's built-in session triggers instead of a custom button click
-        modelViewer.addEventListener('ar-status', (event) => {
-            if (event.detail.status === 'session-started') {
-                // Shut down our custom background video track only when WebXR has successfully claimed the lens
-                if (localStream) {
-                    localStream.getTracks().forEach(track => track.stop());
-                }
-            } else if (event.detail.status === 'not-presenting') {
-                // If they exit AR mode, reboot our custom background video stream layout seamlessly
-                initCamera();
-            }
-        });
+      els.spinBtn.addEventListener('click', () => {
+        state.autoRotate = !state.autoRotate;
+        if (state.autoRotate) {
+          els.viewer.setAttribute('auto-rotate', '');
+          els.spinBtn.textContent = 'Toggle auto-rotate';
+        } else {
+          els.viewer.removeAttribute('auto-rotate');
+          els.spinBtn.textContent = 'Resume auto-rotate';
+        }
+      });
 
-        // --- 4. Live Catalog Dataset Records ---
-        const furnitureDatabase = {
-            chair: {
-                name: "Modern Accent Chair",
-                brand: "LuxeComfort Inc.",
-                size: "85cm x 80cm x 90cm",
-                color: "Teal Blue",
-                texture: "Premium Velvet Fabric",
-                modelUrl: "https://modelviewer.dev/shared-assets/models/Chair.glb"
-            },
-            table: {
-                name: "Minimalist Coffee Table",
-                brand: "Oak&Iron Co.",
-                size: "120cm x 60cm x 45cm",
-                color: "Natural Oak Finish",
-                texture: "Solid Oak / Matte Steel",
-                modelUrl: "https://modelviewer.dev/shared-assets/models/glTF-Sample-Assets/Models/CoffeeTable/glTF-Binary/CoffeeTable.glb"
-            },
-            sofa: {
-                name: "Nordic Luxe Sofa",
-                brand: "UrbanLiving Designs",
-                size: "210cm x 95cm x 85cm",
-                color: "Charcoal Grey",
-                texture: "Breathable Premium Linen Blend",
-                modelUrl: "https://modelviewer.dev/shared-assets/models/Solitaire.glb"
-            }
-        };
+      els.resetBtn.addEventListener('click', () => {
+        els.viewer.cameraOrbit = state.selected.orbit;
+        els.viewer.jumpCameraToGoal();
+      });
+    }
 
-        const selector = document.getElementById('furniture-selector');
-
-        selector.addEventListener('change', (e) => {
-            const currentProduct = furnitureDatabase[e.target.value];
-            
-            if (currentProduct) {
-                document.getElementById('item-name').innerText = currentProduct.name;
-                document.getElementById('item-brand').innerText = currentProduct.brand;
-                document.getElementById('item-size').innerText = currentProduct.size;
-                document.getElementById('item-color').innerText = currentProduct.color;
-                document.getElementById('item-texture').innerText = currentProduct.texture;
-
-                modelViewer.src = currentProduct.modelUrl;
-            }
-        });
-    </script>
+    initTheme();
+    renderFurnitureList();
+    applySelection();
+    attachViewerEvents();
+    attachControls();
+  </script>
 </body>
 </html>
